@@ -1,0 +1,67 @@
+version: '3.8'
+
+services:
+  # RabbitMQ message broker
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: file-publisher-rabbitmq
+    ports:
+      - "5672:5672"   # AMQP port
+      - "15672:15672" # Management UI port
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - file-publisher-network
+
+  # File scanner and publisher
+  file-publisher:
+    build: .
+    container_name: file-publisher-app
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: guest
+      RABBITMQ_PASSWORD: guest
+      RABBITMQ_VHOST: /
+      RABBITMQ_QUEUE: file_events
+    volumes:
+      # Mount a directory from the host to scan
+      # Change the left side to point to the directory you want to scan
+      - ./sample_data:/data:ro  # Read-only mount
+    command: ["--root", "/data", "--log-level", "INFO"]
+    networks:
+      - file-publisher-network
+
+  # Optional: Example consumer to view messages
+  consumer:
+    build: .
+    container_name: file-publisher-consumer
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: guest
+      RABBITMQ_PASSWORD: guest
+      RABBITMQ_VHOST: /
+      RABBITMQ_QUEUE: file_events
+    entrypoint: ["python", "-m", "recursive_file_publisher.consumer_example"]
+    command: ["--queue", "file_events", "--log-level", "INFO"]
+    networks:
+      - file-publisher-network
+    profiles:
+      - with-consumer  # Only run when explicitly enabled
+
+networks:
+  file-publisher-network:
+    driver: bridge
