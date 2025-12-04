@@ -81,3 +81,12 @@ Each file is published as a JSON message:
 ## Verification
 
 View messages in RabbitMQ Management UI: http://localhost:15672 (guest/guest)
+
+## AI Usage Disclosure
+
+This project was developed with assistance from GitHub Copilot for:
+- Code generation and boilerplate reduction
+- Documentation and docstring creation
+- Best practices suggestions
+
+All code has been reviewed, tested, and is fully understood by me, the developer.
